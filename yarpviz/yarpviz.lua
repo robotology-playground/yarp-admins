@@ -151,11 +151,13 @@ prop:fromArguments(param)
 if prop:check("help") then
   print("Usage: yarpviz.lua [OPTIONS]\n")
   print("Known values for OPTION are:\n")
+  print("  --type <output_type>\t Output type: x11, pdf, eps, svg, jpg, png, txt (default: x11)")
   print("  --out  <output_name>\t Output file name (default: output.txt)")
-  print("  --type <output_type>\t Output type: pdf, eps, svg, jpg, png, txt (default: txt)")
   print("  --gen  <generator>  \t Graphviz-based graph generator: dot, neato, twopi, circo (default: dot)")
   print("  --nodesep <value>   \t Specifies the minimum vertical distance between the adjacent nodes  (default: 0.4)")
   print("  --ranksep <value>   \t Specifies the minimum distance between the adjacent nodes (default: 0.5)")
+  print("\nWith the default output type (x11), it opens an X11 window to renders the graph. This is not available on ")
+  print("a Windows machine. However, you can allways render the graph in other formats (e.g., jpg).")
 
 --  print("  --all-ports         \t Shows all the ports even without any connection")
   os.exit()
@@ -165,7 +167,7 @@ os.execute("yarp clean --timeout 0.2")
 
 local ports = yarp_name_list()
 
-typ = "txt"
+typ = "x11"
 if prop:check("type") then typ = prop:find("type"):asString() end
 if typ == "txt" then 
     -- creating dot file
@@ -277,9 +279,8 @@ file:close()
 
 gen = "dot"
 if prop:check("gen") then gen = prop:find("gen"):asString() end
-typ = "pdf"
 
--- creating pdf
+-- rendering
 os.execute(gen.." -T"..typ.." -o "..filename.." "..filename..".dot")
 
 -- Deinitialize yarp network
