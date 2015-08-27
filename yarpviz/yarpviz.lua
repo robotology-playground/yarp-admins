@@ -11,6 +11,20 @@ require("yarp")
 -- initialize yarp network
 yarp.Network()
 
+
+--
+-- print_error
+--
+
+function print_error(msg)
+    if package.config:sub(1,1) == "/" then  -- an ugly way to determine the platform (pooof!)
+        print("\27[91m[ERROR]\27[0m "..msg)
+    else
+        print("[ERROR] "..msg)
+    end    
+end
+
+
 --
 -- splits string by a text delimeter
 --
@@ -42,7 +56,7 @@ function yarp_name_list()
   cmd:addString("list")
   local ret = yarp.NetworkBase_writeToNameServer(cmd, reply, style)
   if ret == false or reply:size() ~= 1 then
-    print("Error")
+    print_error("Error")
   end
 
   local str = reply:get(0):asString()
@@ -62,13 +76,13 @@ function yarp_name_list()
   return ports_map
 end
 
-function get_port_con(port_name)
+function get_port_con(port_name, with_owners)
   local ping = yarp.Port()  
   ping:open("/anon_rpc");  
   ping:setAdminMode(true)
   local ret = yarp.NetworkBase_connect(ping:getName(), port_name)
   if ret == false then
-      print("Cannot connect to " .. port_name)
+      print_error("Cannot connect to " .. port_name)
       return nil, nil, nil
   end
 
@@ -78,7 +92,7 @@ function get_port_con(port_name)
   cmd:addString("list")
   cmd:addString("out")  
   if ping:write(cmd, reply) == false then
-      print("Cannot write to " .. port_name)
+      print_error("(getting out list) Cannot write to " .. port_name)
       ping:close()
       return nil, nil, nil
   end  
@@ -94,7 +108,7 @@ function get_port_con(port_name)
     cmd:addString("out")
     cmd:addString(out_name)
     if ping:write(cmd, reply2) == false then
-      print("Cannot write to " .. port_name)
+      print_error("(getting carrier) Cannot write to " .. port_name)
       ping:close()
       return nil, outs_list, nil 
     end
@@ -107,7 +121,7 @@ function get_port_con(port_name)
   cmd:addString("list")
   cmd:addString("in")  
   if ping:write(cmd, reply) == false then
-      print("Cannot write to " .. port_name)
+      print_error("(getting in list) Cannot write to " .. port_name)
       ping:close()
       return nil, outs_list, outs_carlist
   end  
@@ -117,24 +131,32 @@ function get_port_con(port_name)
   end 
 
   -- getting port owner name 
-  cmd:clear()
-  reply:clear()
-  cmd:addString("prop")
-  cmd:addString("get") 
-  cmd:addString(port_name) 
-  if ping:write(cmd, reply) == false then
-      print("Cannot write to " .. port_name)
-      ping:close()
-      return nil, ins_list, outs_list, outs_carlist
-  end  
-  proc = reply:findGroup("process")
-  proc_prop = proc:get(1):asDict()
-  owner = {}
-  owner["name"] = proc_prop:find("name"):asString()
-  owner["arguments"] = proc_prop:find("arguments"):asString()
-  owner["pid"] = proc_prop:find("pid"):asInt()
+  if with_owners ~= nil and with_owners == true then 
+      cmd:clear()
+      reply:clear()
+      cmd:addString("prop")
+      cmd:addString("get") 
+      cmd:addString(port_name) 
+      if ping:write(cmd, reply) == false then
+          print_error("(geting owner) Cannot write to " .. port_name)
+          ping:close()
+          return nil, ins_list, outs_list, outs_carlist
+      end  
+      proc = reply:findGroup("process")
+      if proc ~= nil and proc:isNull() == false then
+          proc_prop = proc:get(1):asDict()
+          owner = {}
+          owner["name"] = proc_prop:find("name"):asString()
+          owner["arguments"] = proc_prop:find("arguments"):asString()
+          owner["pid"] = proc_prop:find("pid"):asInt()
+          ping:close()
+          return ins_list, outs_list, outs_carlist, owner   
+      else
+          print_error("(geting owner) cannot find group 'process' in prop get!")
+      end
+  end
   ping:close()
-  return ins_list, outs_list, outs_carlist, owner
+  return ins_list, outs_list, outs_carlist
 end
 
 ---------------------------------------------------------------------
@@ -175,7 +197,7 @@ if typ == "txt" then
     if prop:check("out") then filename = prop:find("out"):asString() end
     local file = io.open(filename, "w")
     if file == nil then
-      print("cannot open", filename)
+      print_error("cannot open", filename)
       os.exit()
     end 
 
@@ -197,7 +219,7 @@ local filename = "output."..typ
 if prop:check("out") then filename = prop:find("out"):asString() end
 local file = io.open(filename..".dot", "w")
 if file == nil then
-  print("cannot open", filename..".dot")
+  print_error("cannot open", filename..".dot")
   os.exit()
 end  
   
@@ -225,24 +247,28 @@ processes = {}
 owner_inputs = {}
 owner_outputs = {}
 for name,node in pairs(ports) do 
-    local ins, outs, cars, owner = get_port_con(name)
-    owner["outputs"] = {}
-    owner["inputs"] = {}
+    local ins, outs, cars, owner = get_port_con(name, true)
+    if owner ~= nil then
+        owner["outputs"] = {}
+        owner["inputs"] = {}
+    end        
     if prop:check("all-ports") ~= true then        
         if ins ~= nil and outs ~= nil then 
             if #outs ~= 0 or #ins ~=1 then
                 file:write(node.." [label=\""..name.."\"]\n")
-                if #outs ~= 0 then 
-                    owner_outputs[node] = owner["pid"]
-                else
-                    owner_inputs[node] = owner["pid"]
-                end
+                if owner ~= nil then 
+                    if #outs ~= 0 then 
+                        owner_outputs[node] = owner["pid"]
+                    else
+                        owner_inputs[node] = owner["pid"]
+                    end
+                    processes[owner["pid"]] = owner
+                end                    
             end 
         end    
      else
         file:write(node.." [label=\""..name.."\"]\n")
-    end 
-    processes[owner["pid"]] = owner
+    end       
 end
 
 -- adding owner (process) shapes
