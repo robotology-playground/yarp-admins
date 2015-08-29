@@ -106,7 +106,6 @@ end
 
 function Graph:create_node(uid, label) 
     local n = Node(uid, label)
-    print(n:uid())
     self.nodes[n:uid()] = n
     return n
 end
@@ -139,6 +138,10 @@ function Graph:disconnect(node1, node2)
             break
         end
     end
+end
+
+function Graph:get_node_by_uid(uid)
+    return self.nodes[uid]
 end
 
 function print_graph(g) 
@@ -280,7 +283,7 @@ function get_port_con(port_name, with_owners)
   for i=0,reply:size()-1 do 
     ins_list[#ins_list+1] = reply:get(i):asString()
   end 
-/Left/grabber
+
   -- getting port owner name 
   if with_owners ~= nil and with_owners == true then 
       cmd:clear()
@@ -339,7 +342,6 @@ if prop:check("help") then
   print("  --ranksep <value>   \t Specifies the minimum distance between the adjacent nodes (default: 0.5)")
   print("\nWith the default output type (x11), it opens an X11 window to renders the graph. This is not available on ")
   print("a Windows machine. However, you can allways render the graph in other formats (e.g., jpg).")
-
 --  print("  --all-ports         \t Shows all the ports even without any connection")
   os.exit()
 end
@@ -362,36 +364,46 @@ for name,label in pairs(ports) do
     graph:create_node(node.name, node)
 end
 
-for uid,node in pairs(graph:get_nodes()) do
-    if node:get_label().type == "port" then    
-        local ins, outs, cars, owner = get_port_con(node:get_label().name, true)
-        -- create node for the port owner
+-- create links between nodes
+for name,label in pairs(ports) do
+    local ins, outs, cars, owner = get_port_con(name, true)
+    local node = graph:get_node_by_uid(name)
+    -- create node for the port owner
+    if owner ~= nil then 
         local p_node = {}
         p_node.type = "process"
         p_node.name = owner["name"]
         p_node.arguments = owner["arguments"]
         p_node.gv_label = owner["pid"]
-        owner_node = graph:create_node(owner["pid"], p_node)
-        
-        -- create link between port and its owner
-        edge_label = {}
-        edge_label.type = "ownership"
-        graph:connect(owner_node, node, edge_label)
-        
-        -- create link between the node and its output
+        owner_node = graph:create_node(owner["pid"], p_node)    
 
+        -- create link between port and its owner
+        elab_owner = {}
+        elab_owner.type = "ownership"
+        if #outs ~= 0 then 
+            graph:connect(owner_node, node, elab_owner)
+        else
+            graph:connect(node, owner_node, elab_owner)
+        end
+    end
+    -- create link between the node and its output
+    for i=1,#outs do 
+        local elab_out = {}
+        elab_out.type = "connection"
+        elab_out.cars = "unknown"
+        if cars[i] ~= nil then elab_out.carrier = cars[i] end
+        local node2 = graph:get_node_by_uid(outs[i])
+        if node2 ~= nil then
+            graph:connect(node, node2, elab_out)
+        end
     end
 end
 
-print_graph(graph)
-
-
-os.exit()
-
 typ = "x11"
 if prop:check("type") then typ = prop:find("type"):asString() end
+
+-- generating plain text file
 if typ == "txt" then 
-    -- creating dot file
     local filename = "output.txt"
     if prop:check("out") then filename = prop:find("out"):asString() end
     local file = io.open(filename, "w")
@@ -400,18 +412,20 @@ if typ == "txt" then
       os.exit()
     end 
 
-    for name,node in pairs(ports) do   
-       print("checking "..name.." ...")
-       local ins, outs, cars = get_port_con(name, "out")
-       if outs ~= nil then
-           for i=1,#outs do       
-             file:write(name..", "..outs[i]..", "..cars[i].."\n")
-           end
-       end    
+    edges = graph:get_edges()
+    for uid,edge in pairs(edges) do
+        if edge:get_label().type == "connection" then 
+            local from = edge:get_from()
+            local to = edge:get_to()
+            local carrier = edge:get_label().carrier
+            file:write(from:get_label().name..", "..to:get_label().name..", "..carrier.."\n")
+        end
     end
     file:close()
     os.exit()
 end
+
+
 
 -- creating dot file
 local filename = "output."..typ
@@ -442,70 +456,38 @@ dot_header = [[
   
 file:write(dot_header.."\n")
 
-processes = {}
-owner_inputs = {}
-owner_outputs = {}
-for name,node in pairs(ports) do 
-    local ins, outs, cars, owner = get_port_con(name, true)
-    if owner ~= nil then
-        owner["outputs"] = {}
-        owner["inputs"] = {}
-    end        
-    if prop:check("all-ports") ~= true then        
-        if ins ~= nil and outs ~= nil then 
-            if #outs ~= 0 or #ins ~=1 then
-                file:write(node.." [label=\""..name.."\"]\n")
-                if owner ~= nil then 
-                    if #outs ~= 0 then 
-                        owner_outputs[node] = owner["pid"]
-                    else
-                        owner_inputs[node] = owner["pid"]
-                    end
-                    processes[owner["pid"]] = owner
-                end                    
-            end 
-        end    
-     else
-        file:write(node.." [label=\""..name.."\"]\n")
-    end       
+-- write graphviz nodes
+nodes = graph:get_nodes()
+for uid,node in pairs(nodes) do
+    local label = node:get_label()
+    if label.type == "process" then
+        file:write(label.gv_label.." [label=\""..label.name.."\\n"..label.arguments.."\", shape=\"component\", color=\"#a5cf80\",  fillcolor=\"#a5cf80\"]\n")
+    elseif label.type == "port" then
+         file:write(label.gv_label.." [label=\""..label.name.."\"]\n")  
+    end
 end
 
--- adding owner (process) shapes
-for pid,info in pairs(processes) do 
-    file:write(pid.." [label=\""..info["name"].."\\n"..info["arguments"].."\", shape=\"component\", color=\"#a5cf80\",  fillcolor=\"#a5cf80\"]\n")
+-- wrtie graphviz links
+edges = graph:get_edges()
+for uid,edge in pairs(edges) do
+    local from = edge:get_from()
+    local to = edge:get_to()
+    if edge:get_label().type == "connection" then 
+        local carrier = edge:get_label().carrier
+        file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.."[weight=0.1]\n")
+    elseif edge:get_label().type == "ownership" then 
+        file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.." [penwidth=1.0, style=\"dashed\", color=\"#8c8c8c\"]\n")
+    end
 end
 
--- adding ports to the owner
-for node,pid in pairs(owner_outputs) do 
-    file:write(pid.." -> "..node.." [penwidth=1.0, style=\"dashed\", color=\"#8c8c8c\"]\n")
-end
-
-for node,pid in pairs(owner_inputs) do 
-    file:write(node.." -> "..pid.." [penwidth=1.0, style=\"dashed\", color=\"#8c8c8c\"]\n")
-end
-
--- adding connection links
-for name,node in pairs(ports) do   
-   print("checking "..name.." ...")
-   local ins, outs, cars = get_port_con(name, "out")
-   if outs ~= nil then 
-       for i=1,#outs do
-         local to = ports[outs[i]]
-         if to ~= nil then
-            file:write(node.." -> "..to.."[weight=0.1]\n")
-         end   
-       end
-   end    
-end
 
 file:write("}\n")
 file:close()
 
 
+-- rendering
 gen = "dot"
 if prop:check("gen") then gen = prop:find("gen"):asString() end
-
--- rendering
 os.execute(gen.." -T"..typ.." -o "..filename.." "..filename..".dot")
 
 -- Deinitialize yarp network
