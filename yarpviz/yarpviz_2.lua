@@ -83,6 +83,22 @@ function Node:remove_output(edge) self.outputs[edge:uid()] = nil end
 function Node:get_inputs() return self.inputs end
 function Node:get_outputs() return self.outputs end
 
+function Node:all_child_leaves() 
+    are_leaves = true
+    for uid,edge in pairs(self.outputs) do
+        are_leaves = are_leaves and edge:get_to():is_leaf()
+    end
+    return are_leaves
+end
+
+function Node:all_parent_orphans() 
+    are_orphans = true
+    for uid,edge in pairs(self.inputs) do
+        are_orphans = are_orphans and edge:get_from():is_orphan()
+    end
+    return are_orphans    
+end
+
 
 
 -----------------------------------------------
@@ -169,12 +185,35 @@ end
 --
 -- print_error
 --
-
 function print_error(msg)
     if package.config:sub(1,1) == "/" then  -- an ugly way to determine the platform (pooof!)
         print("\27[91m[ERROR]\27[0m "..msg)
     else
         print("[ERROR] "..msg)
+    end    
+end
+
+
+--
+-- print_warning
+--
+function print_warning(msg)
+    if package.config:sub(1,1) == "/" then  -- an ugly way to determine the platform (pooof!)
+        print("\27[93m[INFO]\27[0m "..msg)
+    else
+        print("[WARNING] "..msg)
+    end    
+end
+
+
+--
+-- print_info
+--
+function print_info(msg)
+    if package.config:sub(1,1) == "/" then  -- an ugly way to determine the platform (pooof!)
+        print("\27[92m[INFO]\27[0m "..msg)
+    else
+        print("[INFO] "..msg)
     end    
 end
 
@@ -210,7 +249,7 @@ function yarp_name_list()
   cmd:addString("list")
   local ret = yarp.NetworkBase_writeToNameServer(cmd, reply, style)
   if ret == false or reply:size() ~= 1 then
-    print_error("Error")
+    print_error("Cannot write to YARP name server")
   end
 
   local str = reply:get(0):asString()
@@ -307,10 +346,13 @@ function get_port_con(port_name, with_owners)
           owner["policy"] = proc_prop:find("policy"):asInt()
 
           platform = reply:findGroup("platform")
-          platform_prop = platform:get(1):asDict()
-          owner["os"] = platform_prop:find("os"):asInt()
-          owner["hostname"] = platform_prop:find("hostname"):asInt()
-
+          if platform ~= nil and platform:isNull() == false then
+              platform_prop = platform:get(1):asDict()
+              owner["os"] = platform_prop:find("os"):asInt()
+              owner["hostname"] = platform_prop:find("hostname"):asInt()
+          else
+              print_warning("(geting owner) cannot find group 'platform' in prop get!")
+          end
           ping:close()
           return ins_list, outs_list, outs_carlist, owner   
       else
@@ -340,9 +382,9 @@ if prop:check("help") then
   print("  --gen  <generator>  \t Graphviz-based graph generator: dot, neato, twopi, circo (default: dot)")
   print("  --nodesep <value>   \t Specifies the minimum vertical distance between the adjacent nodes  (default: 0.4)")
   print("  --ranksep <value>   \t Specifies the minimum distance between the adjacent nodes (default: 0.5)")
+  print("  --only-cons         \t Shows only ports with connection")
   print("\nWith the default output type (x11), it opens an X11 window to renders the graph. This is not available on ")
   print("a Windows machine. However, you can allways render the graph in other formats (e.g., jpg).")
---  print("  --all-ports         \t Shows all the ports even without any connection")
   os.exit()
 end
 
@@ -456,14 +498,29 @@ dot_header = [[
   
 file:write(dot_header.."\n")
 
+local only_cons = prop:check("only-cons")
+
 -- write graphviz nodes
 nodes = graph:get_nodes()
 for uid,node in pairs(nodes) do
     local label = node:get_label()
     if label.type == "process" then
-        file:write(label.gv_label.." [label=\""..label.name.."\\n"..label.arguments.."\", shape=\"component\", color=\"#a5cf80\",  fillcolor=\"#a5cf80\"]\n")
+        if only_cons == true then
+            -- TODO: fix this part
+            --if not node:all_child_leaves() or not node:all_parent_orphans() then
+                file:write(label.gv_label.." [label=\""..label.name.."\\n"..label.arguments.."\", shape=\"component\", color=\"#a5cf80\",  fillcolor=\"#a5cf80\"]\n")
+            --end
+        else
+            file:write(label.gv_label.." [label=\""..label.name.."\\n"..label.arguments.."\", shape=\"component\", color=\"#a5cf80\",  fillcolor=\"#a5cf80\"]\n")
+        end
     elseif label.type == "port" then
-         file:write(label.gv_label.." [label=\""..label.name.."\"]\n")  
+        if only_cons == true then
+            if not node:is_leaf() and not node:is_orphan() then 
+                file:write(label.gv_label.." [label=\""..label.name.."\"]\n")
+            end
+        else
+            file:write(label.gv_label.." [label=\""..label.name.."\"]\n")
+        end
     end
 end
 
@@ -476,7 +533,16 @@ for uid,edge in pairs(edges) do
         local carrier = edge:get_label().carrier
         file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.."[weight=0.1]\n")
     elseif edge:get_label().type == "ownership" then 
-        file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.." [penwidth=1.0, style=\"dashed\", color=\"#8c8c8c\"]\n")
+        if only_cons == true then
+            if from:get_label().type == "port" and not from:is_orphan() then 
+                file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.." [penwidth=1.0, style=\"dashed\", color=\"#8c8c8c\"]\n")
+            end
+            if from:get_label().type == "process" and not from:is_leaf() then 
+                file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.." [penwidth=1.0, style=\"dashed\", color=\"#8c8c8c\"]\n")
+            end
+        else
+            file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.." [penwidth=1.0, style=\"dashed\", color=\"#8c8c8c\"]\n")
+        end
     end
 end
 
