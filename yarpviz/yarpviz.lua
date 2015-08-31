@@ -79,6 +79,7 @@ function Node:is_leaf() return (table.count(self.outputs) == 0) end
 function Node:is_orphan() return (table.count(self.inputs) == 0) end
 function Node:add_input(edge) self.inputs[edge:uid()] = edge end
 function Node:add_output(edge) self.outputs[edge:uid()] = edge end
+
 function Node:remove_input(edge) self.inputs[edge:uid()] = nil end
 function Node:remove_output(edge) self.outputs[edge:uid()] = nil end
 function Node:get_inputs() return self.inputs end
@@ -86,20 +87,20 @@ function Node:get_outputs() return self.outputs end
 function Node:set_visited(flag) self.visited = flag end
 function Node:is_visited(flag) return self.visited end
 
-function Node:all_child_leaves() 
-    are_leaves = true
+function Node:all_child_leaves()
+    if table.count(self.outputs) == 0 then return false end    
     for uid,edge in pairs(self.outputs) do
-        are_leaves = are_leaves and edge:get_to():is_leaf()
+        if not edge:get_to():is_leaf() then return false end
     end
-    return are_leaves
+    return true
 end
 
 function Node:all_parent_orphans() 
-    are_orphans = true
+    if table.count(self.inputs) == 0 then return false end
     for uid,edge in pairs(self.inputs) do
-        are_orphans = are_orphans and edge:get_from():is_orphan()
+        if not edge:get_from():is_orphan() then return false end
     end
-    return are_orphans    
+    return true
 end
 
 
@@ -132,9 +133,11 @@ function Graph:add_edge(edge)
 end
 
 function Graph:create_node(uid, label) 
-    local n = Node(uid, label)
-    self.nodes[n:uid()] = n
-    return n
+    local node = self.get_node_by_uid(self, uid) 
+    if node ~= nil then return node end
+    node = Node(uid, label)
+    self.nodes[node:uid()] = node
+    return self.nodes[node:uid()]
 end
 
 function Graph:delete_node(node) self.nodes[node] = nil end
@@ -297,7 +300,7 @@ end
 
 function get_port_con(port_name, with_owners)
   local ping = yarp.Port()  
-  ping:open("/anon_rpc");  
+  ping:open("...");  
   ping:setAdminMode(true)
   local ret = yarp.NetworkBase_connect(ping:getName(), port_name)
   if ret == false then
@@ -451,25 +454,24 @@ function generate_dot_output(graph)
     for uid,node in pairs(nodes) do
         local label = node:get_label()
         if label.type == "process" then
-            if only_cons == true then
-                -- TODO: fix this part
-                --if not node:all_child_leaves() or not node:all_parent_orphans() then
+            if only_cons == true then                
+                if not (node:is_orphan() and node:all_child_leaves())then
                     file:write(label.gv_label.." [label=\""..label.name.."\\n"..label.arguments.."\", shape=\"component\", color=\"#a5cf80\",  fillcolor=\"#a5cf80\"]\n")
-                --end
+                end
             else
+                --print(label.name.." ("..label.arguments..")", node:is_orphan(), node:all_child_leaves())
                 file:write(label.gv_label.." [label=\""..label.name.."\\n"..label.arguments.."\", shape=\"component\", color=\"#a5cf80\",  fillcolor=\"#a5cf80\"]\n")
             end
         elseif label.type == "port" then
             if only_cons == true then
-                if not node:is_leaf() and not node:is_orphan() then 
+                if not node:is_leaf() and not node:is_orphan() then
                     file:write(label.gv_label.." [label=\""..label.name.."\"]\n")
                 end
             else
                 file:write(label.gv_label.." [label=\""..label.name.."\"]\n")
-            end
+            end                
         end
     end
-
     -- wrtie graphviz links
     edges = graph:get_edges()
     for uid,edge in pairs(edges) do
@@ -479,19 +481,23 @@ function generate_dot_output(graph)
             local carrier = edge:get_label().carrier
             file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.."[weight=0.1]\n")
         elseif edge:get_label().type == "ownership" then 
-            if only_cons == true then
-                if from:get_label().type == "port" and not from:is_orphan() then 
-                    file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.." [penwidth=1.0, style=\"dashed\", color=\"#8c8c8c\"]\n")
-                end
-                if from:get_label().type == "process" and not from:is_leaf() then 
+            if only_cons == true then            
+                --print(from:get_label().name.." -> "..to:get_label().name, from:is_orphan(), to:is_leaf())
+                if not ((to:get_label().type == "port") and to:is_leaf()) then 
                     file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.." [penwidth=1.0, style=\"dashed\", color=\"#8c8c8c\"]\n")
                 end
             else
                 file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.." [penwidth=1.0, style=\"dashed\", color=\"#8c8c8c\"]\n")
             end
         elseif edge:get_label().type == "ownership_unknown" then 
-            file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.." [penwidth=1.0, style=\"dotted\", arrowhead=\"none\" color=\"#ff4444\"]\n")
-        end
+            if only_cons == true then
+                if not ((to:get_label().type == "port") and to:is_leaf()) then 
+                    file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.." [penwidth=1.0, style=\"dotted\", arrowhead=\"none\" color=\"#ff4444\"]\n")
+                end
+            else
+                file:write(from:get_label().gv_label.." -> "..to:get_label().gv_label.." [penwidth=1.0, style=\"dotted\", arrowhead=\"none\" color=\"#ff4444\"]\n")
+            end  
+       end
     end
 
     file:write("}\n")
@@ -561,7 +567,7 @@ for name,label in pairs(ports) do
         owner_node = graph:create_node(owner["pid"], p_node)    
 
         -- create link between port and its owner
-        local elab_owner = {}
+        elab_owner = {}
         elab_owner.type = "ownership"
         if #outs ~= 0 then             
             graph:connect(owner_node, node, elab_owner)
@@ -573,16 +579,18 @@ for name,label in pairs(ports) do
         end
     end
     -- create link between port and its output
-    for i=1,#outs do 
-        local elab_out = {}
-        elab_out.type = "connection"
-        elab_out.cars = "unknown"
-        if cars[i] ~= nil then elab_out.carrier = cars[i] end
-        local node2 = graph:get_node_by_uid(outs[i])
-        if node2 ~= nil then
-            graph:connect(node, node2, elab_out)
+    if outs ~= nil then
+        for i=1,#outs do 
+            local elab_out = {}
+            elab_out.type = "connection"
+            elab_out.cars = "unknown"
+            if cars[i] ~= nil then elab_out.carrier = cars[i] end
+            local node2 = graph:get_node_by_uid(outs[i])
+            if node2 ~= nil then
+                graph:connect(node, node2, elab_out)
+            end
         end
-    end
+    end        
 end
 
 
