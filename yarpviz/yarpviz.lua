@@ -225,7 +225,7 @@ end
 --
 function print_warning(msg)
     if package.config:sub(1,1) == "/" then  -- an ugly way to determine the platform (pooof!)
-        print("\27[93m[INFO]\27[0m "..msg)
+        print("\27[93m[WARNING]\27[0m "..msg)
     else
         print("[WARNING] "..msg)
     end    
