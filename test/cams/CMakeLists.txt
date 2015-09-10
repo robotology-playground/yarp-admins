@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 2.8)
+
+project(test)
+
+find_package(YARP)
+
+include_directories(${YARP_INCLUDE_DIRS})
+
+add_executable(receiver receiver.cpp)
+target_link_libraries(receiver ${YARP_LIBRARIES})
+

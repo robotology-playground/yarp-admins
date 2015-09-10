@@ -288,19 +288,20 @@ function yarp_name_list()
      local s = fields[i]
      local name = s:split("ip")
      name = name[1]:gsub("^%s*(.-)%s*$", "%1")
-     if name ~= "" then
+     if name ~= "" and string.find(name, "tmp") == nil then
        name = "/"..name
        if name ~= yarp.NetworkBase_getNameServerName() then 
          ports_map[name] = "P"..i
-       end     
+       end
      end     
   end
   return ports_map
 end
 
 function get_port_con(port_name, with_owners)
+  print_info("Cheking "..port_name.." ...")
   local ping = yarp.Port()  
-  ping:open("...");  
+  ping:open("/yarpviz");  
   ping:setAdminMode(true)
   local ret = yarp.NetworkBase_connect(ping:getName(), port_name)
   if ret == false then
