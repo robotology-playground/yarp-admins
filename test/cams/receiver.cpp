@@ -9,15 +9,26 @@
 #include <yarp/os/ResourceFinder.h>
 #include <yarp/os/RFModule.h>
 
+#include <fstream>
+#include <vector>
+
 using namespace std;
 using namespace yarp::os;
 using namespace yarp::sig;
 
 
+struct LogType  {
+    yarp::os::Stamp left;
+    yarp::os::Stamp right;
+};
+
 class MyModule:public RFModule
 {
    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelRgb> > left;
    yarp::os::BufferedPort<yarp::sig::ImageOf<yarp::sig::PixelRgb> > right;
+
+   unsigned int sample_count;
+   std::vector<LogType> samples;
 
 public:
     double getPeriod() {
@@ -25,6 +36,8 @@ public:
     }
 
     bool updateModule() {
+        static unsigned  int count = 0;
+
         ImageOf<PixelRgb> *yarp_imgL=left.read(true);                                                  
         ImageOf<PixelRgb> *yarp_imgR=right.read(true);                                                 
          if ((yarp_imgL==NULL) || (yarp_imgR==NULL))                                                           
@@ -33,14 +46,22 @@ public:
         Stamp stamp_left, stamp_right;                                                                        
         left.getEnvelope(stamp_left);                                                                      
         right.getEnvelope(stamp_right);                                                                          
-        printf("%.6f, %.6f\n", stamp_left.getTime(), stamp_right.getTime());
+        LogType sample;
+        sample.left = stamp_left;
+        sample.right = stamp_right;
+        samples[count++] = sample;
 
+        if (count >= sample_count)
+            return false;
+
+        if(count % (unsigned int)(0.1*sample_count) == 0)
+            printf("Got [%d \%]\n", (int)((float)count / (float)sample_count*100.0) );
         return true;
     }
 
     bool configure(yarp::os::ResourceFinder &conf) {
         if(!conf.check("left") || !conf.check("right")) {
-            cout << "Usage: ./receiver --left <port_name> --rigth <port_name>" << endl;
+            cout << "Usage: ./receiver --left <port_name> --rigth <port_name> --count <samnple count>" << endl;
             return false;
         }
 
@@ -84,6 +105,8 @@ public:
             return false;
         }
 
+        sample_count = conf.check("count") ? conf.find("count").asInt() : 1000;
+        samples.resize(sample_count);
         return true;
     }
 
@@ -100,6 +123,18 @@ public:
     bool close() {
         /* optional, close port explicitly */
         cout<<"Calling close function\n";
+        cout<<"Saving log ..."<<endl;
+        
+        ofstream logfile("./samples.log");        
+        for(unsigned int i=0; i<samples.size(); i++) {
+            char msg[128];
+            sprintf(msg, "%d %.6f %d %.6f %.6f\n",
+                    samples[i].left.getCount(), samples[i].left.getTime(),
+                    samples[i].right.getCount(), samples[i].right.getTime(), 
+                    fabs(samples[i].left.getTime() - samples[i].right.getTime()));
+            logfile<<msg;                    
+        }
+        logfile.close();
         left.close();
         right.close();
       return true;
