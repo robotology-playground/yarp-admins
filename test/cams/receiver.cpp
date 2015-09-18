@@ -54,8 +54,8 @@ public:
         if (count >= sample_count)
             return false;
 
-        if(count % (unsigned int)(0.1*sample_count) == 0)
-            printf("Got [%d \%]\n", (int)((float)count / (float)sample_count*100.0) );
+        if(count % (unsigned int)(0.01*sample_count) == 0)
+            printf("Got %u / %u [%u\%]\n", count, sample_count, (unsigned int)((double)count / (double)sample_count*100.0) );
         return true;
     }
 
