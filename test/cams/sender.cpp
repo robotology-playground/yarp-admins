@@ -39,7 +39,8 @@ public:
         static unsigned  int count = 0;
 
         ImageOf<PixelRgb>& imgL = left.prepare();
-        imgL.resize(320, 240);
+        imgL.resize(16, 8);
+        /*
         imgL.zero();
         for(int i=0; i<240; i+=20) {
             PixelRgb rgb(Random::uniform(0, 255),
@@ -47,7 +48,7 @@ public:
                            Random::uniform(0, 255));
             addCircleOutline(imgL, rgb, 160, 120, i);
         }
-
+        */
         Stamp stamp;
         stamp.update();
         left.setEnvelope(stamp);
