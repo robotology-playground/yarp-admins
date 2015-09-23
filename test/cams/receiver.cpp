@@ -90,7 +90,7 @@ public:
                                 right.getName(), "udp")) {
             cout<<"Cannot connect!"<<endl;
             return false;
-        }                            
+        }
 
         yarp::os::QosStyle style;
         style.setThreadPolicy(1);
@@ -98,11 +98,11 @@ public:
         style.setPacketPriorityByLevel(QosStyle::PacketPriorityHigh);
         if(!NetworkBase::setConnectionQos(conf.find("right").asString().c_str(), right.getName(),style)) {
             cout<<"Cannot set Qos"<<endl;
-            return false;
+            //return false;
         }
         if(!NetworkBase::setConnectionQos(conf.find("left").asString().c_str(), left.getName(),style)) {
             cout<<"Cannot set Qos"<<endl;
-            return false;
+            //return false;
         }
 
         sample_count = conf.check("count") ? conf.find("count").asInt() : 1000;

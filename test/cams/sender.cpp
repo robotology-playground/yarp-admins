@@ -13,6 +13,14 @@
 #include <fstream>
 #include <vector>
 
+
+/**
+ * For Linux!!!!
+ */
+#include <sched.h>
+#include <unistd.h>
+
+
 using namespace std;
 using namespace yarp::os;
 using namespace yarp::sig;
@@ -32,7 +40,7 @@ class MyModule:public RFModule
 
 public:
     double getPeriod() {
-        return 1.0/30.0;
+        return 0.005;
     }
 
     bool updateModule() {
@@ -58,12 +66,32 @@ public:
 
     bool configure(yarp::os::ResourceFinder &conf) {
 
+	cpu_set_t set;
+	CPU_ZERO(&set);
+	if(conf.check("affinity")) {
+		int affinity = 	conf.find("affinity").asInt();
+		CPU_SET(affinity, &set);
+		if (sched_setaffinity(getpid(), sizeof(set), &set) == -1) {
+			cout<<"sched_setaffinity failed!";
+			return false;
+		}
+	}
+
         struct sched_param sch_param;
         sch_param.__sched_priority = sched_get_priority_max(SCHED_FIFO) / 4;
         if( sched_setscheduler(0, SCHED_FIFO, &sch_param) != 0 ) {
             cout<<"sched_setscheduler failed."<<endl;
             return false;
         }
+	
+	/*
+	if (sched_getaffinity(getpid(), sizeof(set), &set) != 0) {
+		cout<<"sched_getaffinity failed!";
+		return false;
+	}
+	printf("Current CPU affinity: %08lx\n", set);
+	*/
+
         cout<<"Current sched policy: '"<<sched_getscheduler(0)<<"' and priority: '"<<sch_param.__sched_priority<<"'\n";
 
         if(!left.open("/sender/cam"))
@@ -87,6 +115,8 @@ public:
 };
 
 int main(int argc, char *argv[]) {
+
+    
     Network yarp;
     
     ResourceFinder conf;
