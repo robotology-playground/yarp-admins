@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     MainWindow w;
     w.show();
 
-    w.drawGraph();
+    //w.drawGraph();
     
     return a.exec();
 }

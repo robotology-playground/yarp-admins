@@ -4,5 +4,6 @@
         <file>Gnome-Network-Transmit-64.png</file>
         <file>Gnome-Stock-Person-64.png</file>
         <file>Gnome-System-Run-64.png</file>
+        <file>resources/profiling.png</file>
     </qresource>
 </RCC>

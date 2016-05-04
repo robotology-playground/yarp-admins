@@ -58,6 +58,43 @@
      <height>19</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="separator"/>
+    <addaction name="actionCreate"/>
+    <addaction name="action_Save_project"/>
+    <addaction name="separator"/>
+    <addaction name="actionQuit"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionDocumentaion"/>
+    <addaction name="separator"/>
+    <addaction name="actionAbout"/>
+   </widget>
+   <widget class="QMenu" name="menuProfiling">
+    <property name="title">
+     <string>Profile</string>
+    </property>
+    <addaction name="actionProfile_YARP_network"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>Layout</string>
+    </property>
+    <addaction name="actionOrthogonal"/>
+    <addaction name="actionPolyline"/>
+    <addaction name="actionCurved"/>
+    <addaction name="actionLine"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuProfiling"/>
+   <addaction name="menuView"/>
+   <addaction name="menuHelp"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -68,6 +105,60 @@
    </attribute>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionCreate">
+   <property name="text">
+    <string>&amp;Load project...</string>
+   </property>
+  </action>
+  <action name="actionQuit">
+   <property name="text">
+    <string>E&amp;xit</string>
+   </property>
+  </action>
+  <action name="actionDocumentaion">
+   <property name="text">
+    <string>Documentaion...</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="action_Save_project">
+   <property name="text">
+    <string>&amp;Save project</string>
+   </property>
+  </action>
+  <action name="actionProfile_YARP_network">
+   <property name="icon">
+    <iconset resource="ress.qrc">
+     <normaloff>:/icons/resources/profiling.png</normaloff>:/icons/resources/profiling.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Profile YARP network...</string>
+   </property>
+  </action>
+  <action name="actionOrthogonal">
+   <property name="text">
+    <string>Orthogonal</string>
+   </property>
+  </action>
+  <action name="actionPolyline">
+   <property name="text">
+    <string>Polyline</string>
+   </property>
+  </action>
+  <action name="actionCurved">
+   <property name="text">
+    <string>Curved</string>
+   </property>
+  </action>
+  <action name="actionLine">
+   <property name="text">
+    <string>Line</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
@@ -77,6 +168,8 @@
    <header>QGraphicsViewEc.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="ress.qrc"/>
+ </resources>
  <connections/>
 </ui>

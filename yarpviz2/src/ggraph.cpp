@@ -158,7 +158,6 @@ const pvertex_iterator Graph::find(const Vertex &vertex) {
     }
     return mVertices.end();
 
-
 }
 
 size_t Graph::size() {
@@ -167,4 +166,12 @@ size_t Graph::size() {
     for(; itr!=mVertices.end(); itr++)
         count += (**itr).degree();
     return count/2;
+}
+
+void Graph::clear() {
+    pvertex_iterator itr = mVertices.begin();
+    size_t count = 0;
+    for(; itr!=mVertices.end(); itr++)
+        delete *itr;
+    mVertices.clear();
 }

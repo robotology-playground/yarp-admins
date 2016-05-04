@@ -188,7 +188,7 @@ void QGVScene::applyLayout()
 
 void QGVScene::clear()
 {
-		gvFreeLayout(_context->context(), _graph->graph());
+    gvFreeLayout(_context->context(), _graph->graph());
     _nodes.clear();
     _edges.clear();
     _subGraphs.clear();

@@ -47,6 +47,7 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
+    layoutStyle = "ortho";
     ui->setupUi(this);
     stringModel.setStringList(messages);
     ui->messageView->setModel(&stringModel);
@@ -57,7 +58,15 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(_scene, SIGNAL(nodeContextMenu(QGVNode*)), SLOT(nodeContextMenu(QGVNode*)));
     connect(_scene, SIGNAL(nodeDoubleClick(QGVNode*)), SLOT(nodeDoubleClick(QGVNode*)));
-    progressDlg = new QProgressDialog("...", "Cancel", 0, 100, this);
+    connect(ui->actionProfile_YARP_network, SIGNAL(triggered()),this,SLOT(onProfileYarpNetwork()));
+
+    connect(ui->actionOrthogonal, SIGNAL(triggered()),this,SLOT(onLayoutOrthogonal()));
+    connect(ui->actionCurved, SIGNAL(triggered()),this,SLOT(onLayoutCurved()));
+    connect(ui->actionPolyline, SIGNAL(triggered()),this,SLOT(onLayoutPolyline()));
+    connect(ui->actionLine, SIGNAL(triggered()),this,SLOT(onLayoutLine()));
+
+
+    progressDlg = new QProgressDialog("...", "Cancel", 0, 100, this);    
 }
 
 MainWindow::~MainWindow()
@@ -77,43 +86,12 @@ void MainWindow::onProgress(unsigned int percentage) {
 
 void MainWindow::drawGraph()
 {
-    yInfo()<<"Getting the ports list...";
-    NetworkProfiler::ports_name_set ports;
-    NetworkProfiler::yarpNameList(ports);
-
-
-    yInfo()<<"Getting the ports details...";
-    NetworkProfiler::ports_detail_set portsInfo;
-    progressDlg->setLabelText("Getting the ports details...");
-    progressDlg->setRange(0, ports.size());
-    progressDlg->setWindowModality(Qt::WindowModal);
-    progressDlg->show();
-    for(int i=0; i<ports.size(); i++) {
-        NetworkProfiler::PortDetails info;
-        std::string msg = string("Cheking ")+ports[i] + "...";
-        messages.append(QString(msg.c_str()));
-        if(NetworkProfiler::getPortDetails(ports[i], info))
-            portsInfo.push_back(info);
-        progressDlg->setValue(i);
-        if (progressDlg->wasCanceled())
-            return;
-    }        
-    //progressDlg->setValue(ports.size());
-    stringModel.setStringList(messages);
-    ui->messageView->update();
-
-    yarp::graph::Graph graph;
-    NetworkProfiler::setProgressCallback(this);
-    progressDlg->setLabelText("Generating the graph...");
-    progressDlg->setRange(0, 100);
-    progressDlg->setValue(0);
-    NetworkProfiler::creatNetworkGraph(portsInfo, graph);
-    progressDlg->close();
+    _scene->clear();
 
     //Configure scene attributes
     //_scene->setGraphAttribute("label", "yarp-viz");
 
-    _scene->setGraphAttribute("splines", "ortho"); //curved, polyline, line. ortho
+    _scene->setGraphAttribute("splines", layoutStyle.c_str()); //curved, polyline, line. ortho
     _scene->setGraphAttribute("rankdir", "LR");
     _scene->setGraphAttribute("bgcolor", "#2e3e56");
     //_scene->setGraphAttribute("concentrate", "true"); //Error !
@@ -129,32 +107,53 @@ void MainWindow::drawGraph()
     // drawing nodes
     // create a map between graph nodes and their visualization
     std::map<const Vertex*, QGVNode*> nodeSet;
+    std::map<const string, QGVSubGraph*> subgraphSet;
 
 
+    // adding all process nodes and subgraphs
     pvertex_const_iterator itr;
     const pvertex_set& vertices = graph.vertices();
     for(itr = vertices.begin(); itr!=vertices.end(); itr++) {
         const Property& prop = (*itr)->property;
         if(dynamic_cast<ProcessVertex*>(*itr))
         {
-            QGVNode *node = _scene->addNode(prop.find("name").asString().c_str());
+            QGVSubGraph *sgraph = _scene->addSubGraph(prop.toString().c_str());
+            sgraph->setAttribute("label", prop.find("name").asString().c_str());
+            sgraph->setAttribute("color", "#a5cf80");
+            sgraph->setAttribute("fillcolor", "#0180B5");
+            subgraphSet[prop.toString()] = sgraph;
+            //yInfo()<<"Adding "<<prop.toString();
+            QGVNode *node = sgraph->addNode(prop.find("name").asString().c_str());
             node->setAttribute("shape", "box");
             node->setAttribute("fillcolor", "#a5cf80");
             node->setAttribute("color", "#a5cf80");
             node->setIcon(QImage(":/icons/Gnome-System-Run-64.png"));
             nodeSet[*itr] = node;
+        }
+    }
 
-        } else if(dynamic_cast<PortVertex*>(*itr)) {
+    // adding port nodes
+    //pvertex_const_iterator itr;
+    //const pvertex_set& vertices = graph.vertices();
+    for(itr = vertices.begin(); itr!=vertices.end(); itr++) {
+        const Property& prop = (*itr)->property;
+        if(dynamic_cast<PortVertex*>(*itr)) {
             if(!prop.check("orphan")) {
-                QGVNode *node = _scene->addNode(prop.find("name").asString().c_str());
+                PortVertex* pv = dynamic_cast<PortVertex*>(*itr);
+                Vertex* v = pv->getOwner();
+                //yInfo()<<"Searching for"<<v->property.toString();
+                QGVSubGraph *sgraph = subgraphSet[v->property.toString()];
+                QGVNode *node;
+                if(sgraph)
+                    node =  sgraph->addNode(prop.find("name").asString().c_str());
+                else
+                    node =  _scene->addNode(prop.find("name").asString().c_str());
                 node->setAttribute("shape", "ellipse");
                 node->setAttribute("fillcolor", "#edad56");
                 node->setAttribute("color", "#edad56");
                 nodeSet[*itr] = node;
             }
         }
-        else
-            yWarning()<<"Unknow graph node:"<<prop.toString();
     }
 
     for(itr = vertices.begin(); itr!=vertices.end(); itr++) {
@@ -178,8 +177,13 @@ void MainWindow::drawGraph()
         }
     }
 
-    //_scene->addEdge(node3, snode1, "GB8");
+    //Layout scene
+    _scene->applyLayout();
 
+    //Fit in view
+    ui->graphicsView->fitInView(_scene->sceneRect(), Qt::KeepAspectRatio);
+
+    //_scene->addEdge(node3, snode1, "GB8");
 
     /*
     _scene->loadLayout("digraph test{node [style=filled,fillcolor=white];N1 -> N2;N2 -> N3;N3 -> N4;N4 -> N1;}");
@@ -188,7 +192,6 @@ void MainWindow::drawGraph()
     ui->graphicsView->setScene(_scene);
     return;
     */
-
 
 /*
     //Add some nodes
@@ -220,30 +223,14 @@ void MainWindow::drawGraph()
     _scene->addEdge(node4, node5, "ETH1");
     _scene->addEdge(node2, node5, "ETH2");
 
-    /*
-    QGVSubGraph *sgraph = _scene->addSubGraph("SUB1");
-    sgraph->setAttribute("label", "OFFICE");
+    */
 
-    QGVNode *snode1 = sgraph->addNode("PC0152");
-    QGVNode *snode2 = sgraph->addNode("PC0153");
-
-    _scene->addEdge(snode1, snode2, "RT7");
-
-    _scene->addEdge(node3, snode1, "GB8");
-    _scene->addEdge(node3, snode2, "TS9");
-
-
+/*
     QGVSubGraph *ssgraph = sgraph->addSubGraph("SUB2");
     ssgraph->setAttribute("label", "DESK");
     _scene->addEdge(snode1, ssgraph->addNode("PC0155"), "S10");
-    */
+*/
 
-
-    //Layout scene
-    _scene->applyLayout();
-
-    //Fit in view
-    ui->graphicsView->fitInView(_scene->sceneRect(), Qt::KeepAspectRatio);
 }
 
 void MainWindow::nodeContextMenu(QGVNode *node)
@@ -264,3 +251,71 @@ void MainWindow::nodeDoubleClick(QGVNode *node)
 {
     QMessageBox::information(this, tr("Node double clicked"), tr("Node %1").arg(node->label()));
 }
+
+void MainWindow::onProfileYarpNetwork() {
+
+    graph.clear();
+
+    yInfo()<<"Cleaning death ports...";
+    NetworkProfiler::yarpClean(0.1);
+
+    yInfo()<<"Getting the ports list...";
+    NetworkProfiler::ports_name_set ports;
+    NetworkProfiler::yarpNameList(ports);
+
+
+    yInfo()<<"Getting the ports details...";
+    NetworkProfiler::ports_detail_set portsInfo;
+    progressDlg->setLabelText("Getting the ports details...");
+    progressDlg->reset();
+    progressDlg->setRange(0, ports.size());
+    progressDlg->setValue(0);
+    progressDlg->setWindowModality(Qt::WindowModal);
+    progressDlg->show();
+    for(int i=0; i<ports.size(); i++) {
+        NetworkProfiler::PortDetails info;
+        std::string portname = ports[i].find("name").asString();
+        std::string msg = string("Cheking ") + portname + "...";
+        messages.append(QString(msg.c_str()));
+        if(NetworkProfiler::getPortDetails(portname, info))
+            portsInfo.push_back(info);
+        progressDlg->setValue(i);
+        if (progressDlg->wasCanceled())
+            return;
+    }
+    //progressDlg->setValue(ports.size());
+    stringModel.setStringList(messages);
+    ui->messageView->update();
+
+    NetworkProfiler::setProgressCallback(this);
+    progressDlg->setLabelText("Generating the graph...");
+    progressDlg->setRange(0, 100);
+    progressDlg->setValue(0);
+    NetworkProfiler::creatNetworkGraph(portsInfo, graph);
+    progressDlg->close();
+
+    drawGraph();
+}
+
+
+
+void MainWindow::onLayoutOrthogonal() {
+    layoutStyle = "ortho";
+    drawGraph();
+}
+
+void MainWindow::onLayoutPolyline() {
+    layoutStyle = "polyline";
+    drawGraph();
+}
+
+void MainWindow::onLayoutLine() {
+    layoutStyle = "line";
+    drawGraph();
+}
+
+void MainWindow::onLayoutCurved() {
+    layoutStyle = "curved";
+    drawGraph();
+}
+

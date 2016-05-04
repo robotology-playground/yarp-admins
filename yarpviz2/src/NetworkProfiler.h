@@ -11,15 +11,26 @@
 
 #include<ggraph.h>
 #include<yarp/os/LogStream.h>
+#include<yarp/os/Bottle.h>
 
 class PortVertex : public yarp::graph::Vertex {
 public:
-        PortVertex(const std::string name) : yarp::graph::Vertex("(type port)") {
+        PortVertex(const std::string name) : yarp::graph::Vertex("(type port)") , owner(NULL) {
             property.put("name", name);
-        }        
+        }
+        void setOwner(yarp::graph::Vertex* owner) {
+            PortVertex::owner = owner;
+        }
+
+        yarp::graph::Vertex* getOwner() {
+            return owner;
+        }
+
         virtual bool operator == (const yarp::graph::Vertex &v1) const {
             return property.find("name").asString() == v1.property.find("name").asString();
         }
+private:
+    yarp::graph::Vertex* owner;
 };
 
 
@@ -89,7 +100,7 @@ public:
         }
     };
 
-    typedef typename std::vector<std::string> ports_name_set;
+    typedef typename std::vector<yarp::os::Bottle> ports_name_set;
     typedef typename ports_name_set::iterator ports_name_iterator;
 
     typedef typename std::vector<PortDetails> ports_detail_set;
@@ -119,9 +130,17 @@ public:
      */
     static bool creatNetworkGraph(ports_detail_set details, yarp::graph::Graph& graph);
 
+    /**
+     * @brief NetworkProfiler::yarpClean
+     * @param timeout
+     * @return
+     */
+    static bool yarpClean(float timeout=0.1);
+
     static void setProgressCallback(ProgressCallback* callback) {
         progCallback = callback;
     }
+
 
 private:
         static ProgressCallback* progCallback;

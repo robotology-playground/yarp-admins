@@ -116,6 +116,7 @@ public:
     const pvertex_set& vertices() { return mVertices; }
     size_t order() { return mVertices.size(); }
 
+    void clear();
 
 private:
     pvertex_set mVertices;

@@ -3,8 +3,10 @@
 #include <yarp/os/Network.h>
 #include <yarp/os/LogStream.h>
 #include <yarp/os/ContactStyle.h>
-#include <yarp/os/Bottle.h>
 #include <yarp/os/Port.h>
+#include <yarp/os/OutputProtocol.h>
+#include <yarp/os/Carrier.h>
+
 
 using namespace std;
 using namespace yarp::os;
@@ -15,31 +17,36 @@ NetworkProfiler::ProgressCallback* NetworkProfiler::progCallback = NULL;
 
 bool NetworkProfiler::yarpNameList(ports_name_set &ports) {
     ports.clear();
+
     ContactStyle style;
     style.quiet = true;
     style.timeout = 3.0;
-    Bottle cmd, reply;
-    cmd.addString("list");
-    if(!NetworkBase::writeToNameServer(cmd, reply, style)) {
+    string nameserver = NetworkBase::getNameServerName();
+    Bottle msg, reply;
+    msg.addString("bot");
+    msg.addString("list");
+    if(!NetworkBase::write(Contact::byName(nameserver), msg, reply, style)) {
         yError() << "Cannot write to yarp name server";
         return false;
     }
-    if(!reply.size()) {
+
+    if(reply.size() == 0) {
         yError() << "Empty reply from yarp name server";
         return false;
     }
 
-    istringstream f(reply.get(0).asString());
-    string s;
-    while (getline(f, s)) {
-        size_t pos = s.find_first_of("/");
-        if(pos != std::string::npos) {
-            string str = s.substr(pos);
-            str = str.substr(0, str.find(" "));
-            if(str != NetworkBase::getNameServerName())
-                ports.push_back(str);
+    for (int i=1; i<reply.size(); i++) {
+        Bottle *entry = reply.get(i).asList();
+        if(entry != NULL) {
+            ConstString portname = entry->check("name", Value("")).asString();
+            if (portname != "" && portname != "fallback" && portname != nameserver) {
+                Contact c = Contact::byConfig(*entry);
+                if(c.getCarrier() != "mcast")
+                    ports.push_back(*entry);
+            }
         }
     }
+
     return true;
 }
 
@@ -154,12 +161,14 @@ bool NetworkProfiler::creatNetworkGraph(ports_detail_set details, yarp::graph::G
         // create connection between ports and its owner
         if(info.inputs.size()) {
             graph.insertEdge(*port, *owner, Property("(type ownership) (dir out)"));
-            port->property.put("dir", "in");
+            port->property.put("dir", "in");            
         }
         if(info.outputs.size()) {
             graph.insertEdge(*owner, *port, Property("(type ownership) (dir in)"));
-            port->property.put("dir", "out");
+            port->property.put("dir", "out");        
         }
+        port->setOwner(owner);
+
         // TODO: shall we add unconnected ports?!!
         if(!info.inputs.size() && !info.outputs.size())
             graph.insertEdge(*owner, *port, Property("(type ownership) (dir unknown)"));
@@ -193,5 +202,38 @@ bool NetworkProfiler::creatNetworkGraph(ports_detail_set details, yarp::graph::G
     }
 
     NetworkProfiler::progCallback->onProgress(100); // is it really needed? :p
+    return true;
+}
+
+bool NetworkProfiler::yarpClean(float timeout) {
+
+    if (timeout <= 0)
+        timeout = -1;
+
+    NetworkProfiler::ports_name_set ports;
+    NetworkProfiler::yarpNameList(ports);
+    for(int i=0; i<ports.size(); i++) {
+        std::string portname = ports[i].find("name").asString();
+        Contact addr = Contact::byConfig(ports[i]);
+        if (addr.isValid()) {
+            if (timeout>=0)
+                addr.setTimeout(timeout);
+            /**
+             * TODO: fix the yarp clean
+             */
+
+            /*
+            OutputProtocol *out = Carriers::connect(addr);
+            if (out == NULL)
+                NetworkBase::unregisterName(portname);
+            else
+                delete out;
+            */
+        }
+    }
+
+    string serverName = NetworkBase::getNameServerName();
+    Bottle cmd("gc"), reply;
+    NetworkBase::write(serverName, cmd, reply);
     return true;
 }

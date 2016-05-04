@@ -45,6 +45,11 @@ public:
 private slots:
     void nodeContextMenu(QGVNode* node);
     void nodeDoubleClick(QGVNode* node);
+    void onProfileYarpNetwork();
+    void onLayoutOrthogonal();
+    void onLayoutPolyline();
+    void onLayoutLine();
+    void onLayoutCurved();
 
 private:
     Ui::MainWindow *ui;
@@ -52,6 +57,8 @@ private:
     QProgressDialog* progressDlg;
     QStringList messages;
     QStringListModel stringModel;
+    yarp::graph::Graph graph;
+    std::string layoutStyle;
 };
 
 #endif // MAINWINDOW_H
