@@ -84,7 +84,7 @@ private:
 
 private:
     edge_set outs;
-    edge_set ins;
+    edge_set ins;    
 };
 
 
@@ -112,7 +112,7 @@ public:
     const pvertex_iterator find(const Vertex &v1);
 
     size_t size();
-
+    size_t nodesCount();
     const pvertex_set& vertices() { return mVertices; }
     size_t order() { return mVertices.size(); }
 

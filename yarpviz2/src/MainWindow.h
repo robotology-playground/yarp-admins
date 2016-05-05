@@ -23,8 +23,38 @@ License along with this library.
 #include <QProgressDialog>
 #include <QStringList>
 #include <QStringListModel>
+#include <QTreeWidgetItem>
 
 #include "NetworkProfiler.h"
+
+enum NodeItemType { UNKNOWN = 0,
+                    MODULE = 1,
+                    PORT = 2 };
+
+
+class NodeWidgetItem : public QTreeWidgetItem {
+public:
+    NodeWidgetItem(QTreeWidgetItem* parent, yarp::graph::Vertex* vertex, int type)
+        : QTreeWidgetItem(parent, QStringList(vertex->property.find("name").asString().c_str()), type) {
+        checkFlag = false;
+        NodeWidgetItem::vertex = vertex;
+    }
+
+    void check(bool flag) {
+        checkFlag = flag;
+        setCheckState( 0, (flag == true) ? Qt::Checked : Qt::Unchecked);
+        if(!checkFlag)
+            vertex->property.put("hidden", true);
+        else
+            vertex->property.unput("hidden");
+    }
+
+    bool checked() { return checkFlag; }
+
+public:
+    bool checkFlag;
+    yarp::graph::Vertex* vertex;
+};
 
 namespace Ui {
 class MainWindow;
@@ -37,7 +67,7 @@ class MainWindow : public QMainWindow, public NetworkProfiler::ProgressCallback
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
-    void drawGraph();
+    void drawGraph(yarp::graph::Graph &graph);
 
 public:
     virtual void onProgress(unsigned int percentage);
@@ -50,6 +80,8 @@ private slots:
     void onLayoutPolyline();
     void onLayoutLine();
     void onLayoutCurved();
+    void onLayoutSubgraph();
+    void onNodesTreeItemClicked(QTreeWidgetItem *item, int column);
 
 private:
     Ui::MainWindow *ui;
@@ -57,8 +89,11 @@ private:
     QProgressDialog* progressDlg;
     QStringList messages;
     QStringListModel stringModel;
-    yarp::graph::Graph graph;
+    yarp::graph::Graph mainGraph;
     std::string layoutStyle;
+    bool layoutSubgraph;
+    QTreeWidgetItem *moduleParentItem;
+    QTreeWidgetItem *portParentItem;
 };
 
 #endif // MAINWINDOW_H

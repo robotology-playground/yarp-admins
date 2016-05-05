@@ -14,37 +14,67 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <layout class="QVBoxLayout" name="verticalLayout">
-    <item>
-     <widget class="QGraphicsViewEc" name="graphicsView">
-      <property name="renderHints">
-       <set>QPainter::Antialiasing|QPainter::SmoothPixmapTransform|QPainter::TextAntialiasing</set>
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+     <widget class="QSplitter" name="hsplitter_1">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
       </property>
-      <property name="dragMode">
-       <enum>QGraphicsView::ScrollHandDrag</enum>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QListView" name="messageView">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>16777215</width>
-        <height>150</height>
-       </size>
-      </property>
-      <property name="baseSize">
-       <size>
-        <width>0</width>
-        <height>0</height>
-       </size>
-      </property>
+      <widget class="QSplitter" name="vsplitter_1">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+         <horstretch>20</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <widget class="QGraphicsViewEc" name="graphicsView">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>15</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="renderHints">
+         <set>QPainter::Antialiasing|QPainter::SmoothPixmapTransform|QPainter::TextAntialiasing</set>
+        </property>
+        <property name="dragMode">
+         <enum>QGraphicsView::ScrollHandDrag</enum>
+        </property>
+       </widget>
+       <widget class="QListView" name="messageView">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="baseSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QTreeWidget" name="nodesTreeWidget">
+       <property name="columnCount">
+        <number>1</number>
+       </property>
+       <column>
+        <property name="text">
+         <string>Items</string>
+        </property>
+       </column>
+      </widget>
      </widget>
     </item>
    </layout>
@@ -90,6 +120,8 @@
     <addaction name="actionPolyline"/>
     <addaction name="actionCurved"/>
     <addaction name="actionLine"/>
+    <addaction name="separator"/>
+    <addaction name="actionSubgraph"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuProfiling"/>
@@ -103,6 +135,8 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionProfile_YARP_network"/>
+   <addaction name="separator"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionCreate">
@@ -140,23 +174,43 @@
    </property>
   </action>
   <action name="actionOrthogonal">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Orthogonal</string>
    </property>
   </action>
   <action name="actionPolyline">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Polyline</string>
    </property>
   </action>
   <action name="actionCurved">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Curved</string>
    </property>
   </action>
   <action name="actionLine">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Line</string>
+   </property>
+  </action>
+  <action name="actionSubgraph">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Subgraph</string>
    </property>
   </action>
  </widget>

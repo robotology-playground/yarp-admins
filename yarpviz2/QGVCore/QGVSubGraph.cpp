@@ -113,13 +113,13 @@ void QGVSubGraph::updateLayout()
     prepareGeometryChange();
 
     //SubGraph box
-		boxf box = GD_bb(_sgraph->graph());
+    boxf box = GD_bb(_sgraph->graph());
     pointf p1 = box.UR;
     pointf p2 = box.LL;
     _width = p1.x - p2.x;
     _height = p1.y - p2.y;
 
-		qreal gheight = QGVCore::graphHeight(_scene->_graph->graph());
+    qreal gheight = QGVCore::graphHeight(_scene->_graph->graph());
     setPos(p2.x, gheight - p1.y);
 
     _pen.setWidth(1);
@@ -128,11 +128,11 @@ void QGVSubGraph::updateLayout()
     _pen.setColor(QGVCore::toColor(getAttribute("color")));
 
     //SubGraph label
-		textlabel_t *xlabel = GD_label(_sgraph->graph());
+    textlabel_t *xlabel = GD_label(_sgraph->graph());
     if(xlabel)
     {
         _label = xlabel->text;
-        _label_rect.setSize(QSize(xlabel->dimen.x, xlabel->dimen.y));
-				_label_rect.moveCenter(QGVCore::toPoint(xlabel->pos, QGVCore::graphHeight(_scene->_graph->graph())) - pos());
+        _label_rect.setSize(QSize(xlabel->dimen.x+30, xlabel->dimen.y+10));
+        _label_rect.moveCenter(QGVCore::toPoint(xlabel->pos, QGVCore::graphHeight(_scene->_graph->graph())) - pos());
     }
 }

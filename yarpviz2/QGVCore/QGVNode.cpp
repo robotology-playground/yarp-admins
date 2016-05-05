@@ -105,18 +105,18 @@ void QGVNode::setIcon(const QImage &icon)
 void QGVNode::updateLayout()
 {
     prepareGeometryChange();
-		qreal width = ND_width(_node->node())*DotDefaultDPI;
-		qreal height = ND_height(_node->node())*DotDefaultDPI;
+    qreal width = ND_width(_node->node())*DotDefaultDPI;
+    qreal height = ND_height(_node->node())*DotDefaultDPI;
 
     //Node Position (center)
-		qreal gheight = QGVCore::graphHeight(_scene->_graph->graph());
-		setPos(QGVCore::centerToOrigin(QGVCore::toPoint(ND_coord(_node->node()), gheight), width, height));
+    qreal gheight = QGVCore::graphHeight(_scene->_graph->graph());
+    setPos(QGVCore::centerToOrigin(QGVCore::toPoint(ND_coord(_node->node()), gheight), width, height));
 
     //Node on top
     setZValue(1);
 
     //Node path
-		_path = QGVCore::toPath(ND_shape(_node->node())->name, (polygon_t*)ND_shape_info(_node->node()), width, height);
+    _path = QGVCore::toPath(ND_shape(_node->node())->name, (polygon_t*)ND_shape_info(_node->node()), width, height);
     _pen.setWidth(1);
 
     _brush.setStyle(QGVCore::toBrushStyle(getAttribute("style")));

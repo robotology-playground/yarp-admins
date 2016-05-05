@@ -168,6 +168,11 @@ size_t Graph::size() {
     return count/2;
 }
 
+size_t Graph::nodesCount() {
+    return mVertices.size();
+}
+
+
 void Graph::clear() {
     pvertex_iterator itr = mVertices.begin();
     size_t count = 0;
