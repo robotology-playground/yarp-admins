@@ -9,6 +9,37 @@
 #
 #
 
+if(EXISTS "$ENV{GRAPHVIZ_ROOT}")
+    set(GRAPHVIZ_POSSIBLE_INCDIRS
+        "$ENV{GRAPHVIZ_ROOT}/include"
+        "$ENV{GRAPHVIZ_ROOT}/include/graphviz")
+		
+    set(GRAPHVIZ_POSSIBLE_LIBRARY_PATHS
+        "$ENV{GRAPHVIZ_ROOT}/lib/release/dll"
+        "$ENV{GRAPHVIZ_ROOT}/lib/release/lib")
+endif(EXISTS "$ENV{GRAPHVIZ_ROOT}")
+
+##### check GRAPHVIZ_DIR
+if(EXISTS "$ENV{GRAPHVIZ_DIR}")
+    set(GRAPHVIZ_POSSIBLE_INCDIRS
+        "$ENV{GRAPHVIZ_DIR}/include"
+        "$ENV{GRAPHVIZ_DIR}/include/graphviz")
+
+    set(GRAPHVIZ_POSSIBLE_LIBRARY_PATHS
+        "$ENV{GRAPHVIZ_DIR}/lib/release/dll"
+        "$ENV{GRAPHVIZ_DIR}/lib/release/lib")
+endif(EXISTS "$ENV{GRAPHVIZ_DIR}")
+
+if(GRAPHVIZ_DIR)
+    set(GRAPHVIZ_POSSIBLE_INCDIRS
+        "${GRAPHVIZ_DIR}/include"
+        "${GRAPHVIZ_DIR}/include/graphviz")
+
+    set(GRAPHVIZ_POSSIBLE_LIBRARY_PATHS
+        "${GRAPHVIZ_DIR}/lib/release/dll"
+        "${GRAPHVIZ_DIR}/lib/release/lib")
+endif(GRAPHVIZ_DIR)
+
 if ( GRAPHVIZ_CGRAPH_LIBRARY )
    # in cache already
    SET(Graphviz_FIND_QUIETLY TRUE)
@@ -23,8 +54,12 @@ if( NOT WIN32 )
   pkg_check_modules(GRAPHVIZ_CDT_PKG cdt)
 endif( NOT WIN32 )
 
+message(STATUS "XXXXXXXXXXXXXXXX ${GRAPHVIZ_POSSIBLE_INCDIRS}")
+message(STATUS "XXXXXXXXXXXXXXXX ${GRAPHVIZ_POSSIBLE_LIBRARY_PATHS}")
+
 FIND_LIBRARY(GRAPHVIZ_GVC_LIBRARY NAMES gvc libgvc
   PATHS
+	${GRAPHVIZ_POSSIBLE_LIBRARY_PATHS}
     /usr/lib
     /usr/local/lib
   HINTS
@@ -39,6 +74,7 @@ ENDIF ()
 
 FIND_LIBRARY(GRAPHVIZ_CGRAPH_LIBRARY NAMES cgraph libcgraph
   PATHS
+     ${GRAPHVIZ_POSSIBLE_LIBRARY_PATHS}
     /usr/lib
     /usr/local/lib
   HINTS
@@ -53,6 +89,7 @@ ENDIF ()
 
 FIND_LIBRARY(GRAPHVIZ_CDT_LIBRARY NAMES cdt libcdt
   PATHS
+    ${GRAPHVIZ_POSSIBLE_LIBRARY_PATHS}
     /usr/lib
     /usr/local/lib
   HINTS
@@ -67,6 +104,7 @@ ENDIF ()
 
 FIND_PATH(GRAPHVIZ_INCLUDE_DIR NAMES cgraph.h
   PATHS
+    ${GRAPHVIZ_POSSIBLE_INCDIRS}
     /usr/include
     /usr/include/graphviz
     /usr/local/include
