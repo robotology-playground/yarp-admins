@@ -35,7 +35,14 @@ enum NodeItemType { UNKNOWN = 0,
 class NodeWidgetItem : public QTreeWidgetItem {
 public:
     NodeWidgetItem(QTreeWidgetItem* parent, yarp::graph::Vertex* vertex, int type)
-        : QTreeWidgetItem(parent, QStringList(vertex->property.find("name").asString().c_str()), type) {
+        : QTreeWidgetItem(parent, QStringList(vertex->property.find("name").asString().c_str()), type)
+    {
+        if(dynamic_cast<ProcessVertex*>(vertex)) {
+            std::stringstream lable;
+            lable << vertex->property.find("name").asString().c_str()
+                  << " (" << vertex->property.find("pid").asInt() << ")";
+            setText(0, lable.str().c_str());
+        }
         checkFlag = false;
         NodeWidgetItem::vertex = vertex;
     }
@@ -50,6 +57,7 @@ public:
     }
 
     bool checked() { return checkFlag; }
+    yarp::graph::Vertex* getVertex() { return vertex; }
 
 public:
     bool checkFlag;
@@ -72,6 +80,9 @@ public:
 public:
     virtual void onProgress(unsigned int percentage);
 
+private:
+    void initScene();
+
 private slots:
     void nodeContextMenu(QGVNode* node);
     void nodeDoubleClick(QGVNode* node);
@@ -82,10 +93,12 @@ private slots:
     void onLayoutCurved();
     void onLayoutSubgraph();
     void onNodesTreeItemClicked(QTreeWidgetItem *item, int column);
+    void onWindowMessageBox();
+    void onWindowItem();
 
 private:
     Ui::MainWindow *ui;
-    QGVScene *_scene;
+    QGVScene *scene;
     QProgressDialog* progressDlg;
     QStringList messages;
     QStringListModel stringModel;

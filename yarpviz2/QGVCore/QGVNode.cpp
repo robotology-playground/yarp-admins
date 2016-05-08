@@ -58,7 +58,7 @@ void QGVNode::paint(QPainter * painter, const QStyleOptionGraphicsItem * option,
     if(isSelected())
     {
         QBrush tbrush(_brush);
-        tbrush.setColor(tbrush.color().darker(120));
+        tbrush.setColor(tbrush.color().darker(170));
         painter->setBrush(tbrush);
     }
     else
@@ -116,7 +116,9 @@ void QGVNode::updateLayout()
     setZValue(1);
 
     //Node path
-    _path = QGVCore::toPath(ND_shape(_node->node())->name, (polygon_t*)ND_shape_info(_node->node()), width, height);
+    _path = QGVCore::toPath(ND_shape(_node->node())->name,
+                            (polygon_t*)ND_shape_info(_node->node()),
+                            width, height);
     _pen.setWidth(1);
 
     _brush.setStyle(QGVCore::toBrushStyle(getAttribute("style")));

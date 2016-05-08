@@ -93,7 +93,7 @@
      <string>File</string>
     </property>
     <addaction name="separator"/>
-    <addaction name="actionCreate"/>
+    <addaction name="action_Load_project"/>
     <addaction name="action_Save_project"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
@@ -123,9 +123,17 @@
     <addaction name="separator"/>
     <addaction name="actionSubgraph"/>
    </widget>
+   <widget class="QMenu" name="menuView_2">
+    <property name="title">
+     <string>Window</string>
+    </property>
+    <addaction name="actionMessageBox"/>
+    <addaction name="actionItemswindow"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuProfiling"/>
    <addaction name="menuView"/>
+   <addaction name="menuView_2"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
@@ -139,7 +147,7 @@
    <addaction name="separator"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
-  <action name="actionCreate">
+  <action name="action_Load_project">
    <property name="text">
     <string>&amp;Load project...</string>
    </property>
@@ -213,6 +221,22 @@
     <string>Subgraph</string>
    </property>
   </action>
+  <action name="actionMessageBox">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Message box</string>
+   </property>
+  </action>
+  <action name="actionItemswindow">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Items window</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
@@ -225,5 +249,22 @@
  <resources>
   <include location="ress.qrc"/>
  </resources>
- <connections/>
+ <connections>
+  <connection>
+   <sender>actionQuit</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>408</x>
+     <y>283</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

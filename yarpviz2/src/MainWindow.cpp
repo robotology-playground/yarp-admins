@@ -34,32 +34,19 @@ using namespace yarp::os;
 using namespace yarp::graph;
 
 
-/*
-vector<GenericNode>::iterator findPortNodeByName(vector<GenericNode>& nodes, const string name) {
-    GenericNode n;
-    n.info.name = name;
-    return std::find(nodes.begin(), nodes.end(), n);
-}
-*/
-
-
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow)
+    ui(new Ui::MainWindow), scene(NULL)
 {
-
     ui->setupUi(this);
     stringModel.setStringList(messages);
     ui->messageView->setModel(&stringModel);
-    _scene = new QGVScene("DEMO", this);
-    //bgcolor="#2e3e56"
-    ui->graphicsView->setBackgroundBrush(QBrush(QColor("#2e3e56"), Qt::SolidPattern));
-    ui->graphicsView->setScene(_scene);
+    ui->messageView->setVisible(false);
 
-    connect(_scene, SIGNAL(nodeContextMenu(QGVNode*)), SLOT(nodeContextMenu(QGVNode*)));
-    connect(_scene, SIGNAL(nodeDoubleClick(QGVNode*)), SLOT(nodeDoubleClick(QGVNode*)));
+    // initialize the scene
+    initScene();
+
     connect(ui->actionProfile_YARP_network, SIGNAL(triggered()),this,SLOT(onProfileYarpNetwork()));
-
     connect(ui->actionOrthogonal, SIGNAL(triggered()),this,SLOT(onLayoutOrthogonal()));
     connect(ui->actionCurved, SIGNAL(triggered()),this,SLOT(onLayoutCurved()));
     connect(ui->actionPolyline, SIGNAL(triggered()),this,SLOT(onLayoutPolyline()));
@@ -67,6 +54,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionSubgraph, SIGNAL(triggered()),this,SLOT(onLayoutSubgraph()));
     connect(ui->nodesTreeWidget, SIGNAL(itemClicked(QTreeWidgetItem*, int)), this,
             SLOT(onNodesTreeItemClicked(QTreeWidgetItem *, int)));
+    connect(ui->actionMessageBox, SIGNAL(triggered()),this,SLOT(onWindowMessageBox()));
+    connect(ui->actionItemswindow, SIGNAL(triggered()),this,SLOT(onWindowItem()));
 
     progressDlg = new QProgressDialog("...", "Cancel", 0, 100, this);
 
@@ -74,12 +63,16 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->actionOrthogonal->setChecked(true);
     layoutSubgraph = true;
     ui->actionSubgraph->setChecked(true);
+    ui->actionMessageBox->setChecked(false);
+    ui->actionItemswindow->setChecked(true);
 
-
+    ui->action_Save_project->setEnabled(false);
+    ui->action_Load_project->setEnabled(false);
+    ui->actionDocumentaion->setEnabled(false);
     moduleParentItem = new QTreeWidgetItem( ui->nodesTreeWidget,  QStringList("Modules"));
     portParentItem = new QTreeWidgetItem( ui->nodesTreeWidget,  QStringList("Ports"));
-    //moduleParentItem->setIcon(0, QIcon(":/Gnome-System-Run-64.png"));
-    //moduleParentItem->setIcon(0, QIcon(":/Gnome-System-Run-64.png"));
+    moduleParentItem->setIcon(0, QIcon(":icons/resources/module.svg"));
+    portParentItem->setIcon(0, QIcon(":icons/resources/port.svg"));
 
 }
 
@@ -89,6 +82,18 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::initScene() {
+    if(scene) {
+        scene->clear();
+        delete scene;
+    }
+    scene = new QGVScene("yarpviz", this);
+    ui->graphicsView->setBackgroundBrush(QBrush(QColor("#2e3e56"), Qt::SolidPattern));
+    ui->graphicsView->setScene(scene);
+    connect(scene, SIGNAL(nodeContextMenu(QGVNode*)), SLOT(nodeContextMenu(QGVNode*)));
+    connect(scene, SIGNAL(nodeDoubleClick(QGVNode*)), SLOT(nodeDoubleClick(QGVNode*)));
+
+}
 
 void MainWindow::onProgress(unsigned int percentage) {
     //yInfo()<<percentage<<"%";
@@ -100,31 +105,27 @@ void MainWindow::drawGraph(Graph &graph)
     if(graph.nodesCount() == 0)
         return;
 
-    _scene->clear();    
-    delete _scene;
-    _scene = new QGVScene("yarpviz", this);
-    ui->graphicsView->setBackgroundBrush(QBrush(QColor("#2e3e56"), Qt::SolidPattern));
-    ui->graphicsView->setScene(_scene);
+    initScene();
 
     //Configure scene attributes
-    //_scene->setGraphAttribute("label", "yarp-viz");
+    //scene->setGraphAttribute("label", "yarp-viz");
 
-    _scene->setGraphAttribute("splines", layoutStyle.c_str()); //curved, polyline, line. ortho
-    _scene->setGraphAttribute("rankdir", "LR");
-    _scene->setGraphAttribute("bgcolor", "#2e3e56");
-    //_scene->setGraphAttribute("concentrate", "true"); //Error !
-    _scene->setGraphAttribute("nodesep", "0.4");
-    _scene->setGraphAttribute("ranksep", "0.5");
-    //_scene->setNodeAttribute("shape", "box");
-    _scene->setNodeAttribute("style", "filled");
-    _scene->setNodeAttribute("fillcolor", "gray");
-    _scene->setNodeAttribute("height", "1.0");
-    _scene->setEdgeAttribute("minlen", "2.0");
-    //_scene->setEdgeAttribute("dir", "both");
+    scene->setGraphAttribute("splines", layoutStyle.c_str()); //curved, polyline, line. ortho
+    scene->setGraphAttribute("rankdir", "LR");
+    scene->setGraphAttribute("bgcolor", "#2e3e56");
+    //scene->setGraphAttribute("concentrate", "true"); //Error !
+    scene->setGraphAttribute("nodesep", "0.4");
+    scene->setGraphAttribute("ranksep", "0.5");
+    //scene->setNodeAttribute("shape", "box");
+    scene->setNodeAttribute("style", "filled");
+    scene->setNodeAttribute("fillcolor", "gray");
+    scene->setNodeAttribute("height", "1.0");
+    scene->setEdgeAttribute("minlen", "2.0");
+    //scene->setEdgeAttribute("dir", "both");
 
     // drawing nodes
     // create a map between graph nodes and their visualization
-    std::map<const Vertex*, QGVNode*> nodeSet;
+    //std::map<const Vertex*, QGVNode*> nodeSet;
     std::map<const string, QGVSubGraph*> subgraphSet;
 
 
@@ -132,24 +133,31 @@ void MainWindow::drawGraph(Graph &graph)
     pvertex_const_iterator itr;
     const pvertex_set& vertices = graph.vertices();
     for(itr = vertices.begin(); itr!=vertices.end(); itr++) {
+        dynamic_cast<YarpvizVertex*>(*itr)->setGraphicItem(NULL);
         const Property& prop = (*itr)->property;
         QGVNode *node;
         if(dynamic_cast<ProcessVertex*>(*itr) && !prop.check("hidden"))
         {
             if(layoutSubgraph) {
-                QGVSubGraph *sgraph = _scene->addSubGraph(prop.toString().c_str());
+                QGVSubGraph *sgraph = scene->addSubGraph(prop.toString().c_str());
                 //sgraph->setAttribute("label", prop.find("name").asString().c_str());
                 sgraph->setAttribute("color", "#2e3e56"); // hidden!
                 //sgraph->setAttribute("fillcolor", "#0180B5");
                 subgraphSet[prop.toString()] = sgraph;
                 node = sgraph->addNode(prop.find("name").asString().c_str());
             }else
-                node = _scene->addNode(prop.find("name").asString().c_str());
+                node = scene->addNode(prop.find("name").asString().c_str());
+
+            std::stringstream label;
+            label << "   " << prop.find("name").asString().c_str()
+                  << " (" << prop.find("pid").asInt() << ")   ";
             node->setAttribute("shape", "box");
+            node->setAttribute("label", label.str().c_str());
             node->setAttribute("fillcolor", "#a5cf80");
             node->setAttribute("color", "#a5cf80");
-            node->setIcon(QImage(":/icons/Gnome-System-Run-64.png"));
-            nodeSet[*itr] = node;
+            node->setIcon(QImage(":/icons/resources/Gnome-System-Run-64.png"));
+            //nodeSet[*itr] = node;
+            dynamic_cast<YarpvizVertex*>(*itr)->setGraphicItem(node);
         }
     }
 
@@ -163,19 +171,20 @@ void MainWindow::drawGraph(Graph &graph)
                 QGVNode *node;
                 if(layoutSubgraph) {
                     PortVertex* pv = dynamic_cast<PortVertex*>(*itr);
-                    Vertex* v = pv->getOwner();
+                    ProcessVertex* v = (ProcessVertex*) pv->getOwner();
                     QGVSubGraph *sgraph = subgraphSet[v->property.toString()];
                     if(sgraph)
-                        node =  sgraph->addNode(prop.find("name").asString().c_str());
+                        node =  sgraph->addNode(prop.find("name").asString().c_str());                    
                     else
-                        node =  _scene->addNode(prop.find("name").asString().c_str());
+                        node =  scene->addNode(prop.find("name").asString().c_str());
                 }
                 else
-                    node =  _scene->addNode(prop.find("name").asString().c_str());
+                    node =  scene->addNode(prop.find("name").asString().c_str());
                 node->setAttribute("shape", "ellipse");
                 node->setAttribute("fillcolor", "#edad56");
                 node->setAttribute("color", "#edad56");
-                nodeSet[*itr] = node;
+                //nodeSet[*itr] = node;
+                dynamic_cast<YarpvizVertex*>(*itr)->setGraphicItem(node);
             }
         }
     }
@@ -189,13 +198,18 @@ void MainWindow::drawGraph(Graph &graph)
             if(!v1.property.check("hidden") && !v2.property.check("hidden")) {
                 if(edge.property.find("type").asString() == "ownership" &&
                         edge.property.find("dir").asString() != "unknown") {
-                    QGVEdge* gve = _scene->addEdge(nodeSet[&v1], nodeSet[&v2], "");
+                    //QGVEdge* gve = scene->addEdge(nodeSet[&v1], nodeSet[&v2], "");
+                    QGVEdge* gve = scene->addEdge((QGVNode*)((YarpvizVertex*)&v1)->getGraphicItem(),
+                                                  (QGVNode*)((YarpvizVertex*)&v2)->getGraphicItem(), "");
                     gve->setAttribute("color", "grey");
                     gve->setAttribute("style", "dashed");
                 }
 
                 if(edge.property.find("type").asString() == "connection") {
-                    QGVEdge* gve = _scene->addEdge(nodeSet[&v1], nodeSet[&v2],
+                    //QGVEdge* gve = scene->addEdge(nodeSet[&v1], nodeSet[&v2],
+                    //                               edge.property.find("carrier").asString().c_str());
+                    QGVEdge* gve = scene->addEdge((QGVNode*)((YarpvizVertex*)&v1)->getGraphicItem(),
+                                                  (QGVNode*)((YarpvizVertex*)&v2)->getGraphicItem(),
                                                    edge.property.find("carrier").asString().c_str());
                     gve->setAttribute("color", "white");
                 }
@@ -204,59 +218,14 @@ void MainWindow::drawGraph(Graph &graph)
     }
 
     //Layout scene
-    _scene->applyLayout();
+    scene->applyLayout();
 
     //Fit in view
-    ui->graphicsView->fitInView(_scene->sceneRect(), Qt::KeepAspectRatio);
+    ui->graphicsView->fitInView(scene->sceneRect(), Qt::KeepAspectRatio);
 
-    //_scene->addEdge(node3, snode1, "GB8");
-
-    /*
-    _scene->loadLayout("digraph test{node [style=filled,fillcolor=white];N1 -> N2;N2 -> N3;N3 -> N4;N4 -> N1;}");
-    connect(_scene, SIGNAL(nodeContextMenu(QGVNode*)), SLOT(nodeContextMenu(QGVNode*)));
-    connect(_scene, SIGNAL(nodeDoubleClick(QGVNode*)), SLOT(nodeDoubleClick(QGVNode*)));
-    ui->graphicsView->setScene(_scene);
-    return;
-    */
-
-/*
-    //Add some nodes
-    QGVNode *node1 = _scene->addNode("BOX");
-    node1->setIcon(QImage(":/icons/Gnome-System-Run-64.png"));
-    QGVNode *node2 = _scene->addNode("SERVER0");
-    node2->setIcon(QImage(":/icons/Gnome-Network-Transmit-64.png"));
-    QGVNode *node3 = _scene->addNode("SERVER1");
-    node3->setIcon(QImage(":/icons/Gnome-Network-Transmit-64.png"));
-    QGVNode *node4 = _scene->addNode("USER");
-    node4->setIcon(QImage(":/icons/Gnome-Stock-Person-64.png"));
-    QGVNode *node5 = _scene->addNode("SWITCH");
-    node5->setIcon(QImage(":/icons/Gnome-Network-Server-64.png"));
-
-    //Add some edges
-    _scene->addEdge(node1, node2, "TTL")->setAttribute("color", "red");
-    _scene->addEdge(node1, node2, "SERIAL");
-    _scene->addEdge(node1, node3, "RAZ")->setAttribute("color", "blue");
-    _scene->addEdge(node2, node3, "SECU");
-
-    _scene->addEdge(node2, node4, "STATUS")->setAttribute("color", "red");
-
-    _scene->addEdge(node4, node3, "ACK")->setAttribute("color", "red");
-
-    _scene->addEdge(node4, node2, "TBIT");
-    _scene->addEdge(node4, node2, "ETH");
-    _scene->addEdge(node4, node2, "RS232");
-
-    _scene->addEdge(node4, node5, "ETH1");
-    _scene->addEdge(node2, node5, "ETH2");
-
-    */
-
-/*
-    QGVSubGraph *ssgraph = sgraph->addSubGraph("SUB2");
-    ssgraph->setAttribute("label", "DESK");
-    _scene->addEdge(snode1, ssgraph->addNode("PC0155"), "S10");
-*/
-
+    //QGVSubGraph *ssgraph = sgraph->addSubGraph("SUB2");
+    //ssgraph->setAttribute("label", "DESK");
+    //scene->addEdge(snode1, ssgraph->addNode("PC0155"), "S10");
 }
 
 void MainWindow::nodeContextMenu(QGVNode *node)
@@ -282,15 +251,15 @@ void MainWindow::onProfileYarpNetwork() {
 
     mainGraph.clear();
 
-    yInfo()<<"Cleaning death ports...";
+    messages.append("Cleaning death ports...");
     NetworkProfiler::yarpClean(0.1);
 
-    yInfo()<<"Getting the ports list...";
+    messages.append("Getting the ports list...");
     NetworkProfiler::ports_name_set ports;
     NetworkProfiler::yarpNameList(ports);
 
 
-    yInfo()<<"Getting the ports details...";
+    messages.append("Getting the ports details...");
     NetworkProfiler::ports_detail_set portsInfo;
     progressDlg->setLabelText("Getting the ports details...");
     progressDlg->reset();
@@ -347,8 +316,8 @@ void MainWindow::onProfileYarpNetwork() {
         }
     }
 
-
-
+    moduleParentItem->setExpanded(true);
+    portParentItem->setExpanded(true);
     drawGraph(mainGraph);
 }
 
@@ -399,4 +368,20 @@ void MainWindow::onNodesTreeItemClicked(QTreeWidgetItem *item, int column){
     ((NodeWidgetItem*)(item))->check(state);
     if(needUpdate)
         drawGraph(mainGraph);
+
+    QList<QGraphicsItem *> items = scene->selectedItems();
+    foreach( QGraphicsItem *item, items )
+        item->setSelected(false);
+    YarpvizVertex* yv = (YarpvizVertex*)((NodeWidgetItem*)(item))->getVertex();
+    if(yv->getGraphicItem()) {
+        ((QGVNode*)yv->getGraphicItem())->setSelected(true);
+    }
+}
+
+void MainWindow::onWindowMessageBox() {
+    ui->messageView->setVisible(ui->actionMessageBox->isChecked());
+}
+
+void MainWindow::onWindowItem() {
+    ui->nodesTreeWidget->setVisible(ui->actionItemswindow->isChecked());
 }

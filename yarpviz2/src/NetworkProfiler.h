@@ -13,18 +13,29 @@
 #include<yarp/os/LogStream.h>
 #include<yarp/os/Bottle.h>
 
-class PortVertex : public yarp::graph::Vertex {
+
+class YarpvizVertex : public yarp::graph::Vertex {
 public:
-        PortVertex(const std::string name) : yarp::graph::Vertex("(type port)") , owner(NULL) {
+        YarpvizVertex(const yarp::os::Property &prop) : yarp::graph::Vertex(prop){
+            graphicItem = NULL;
+        }
+        void setGraphicItem(void* item) { graphicItem= item; }
+        void* getGraphicItem() { return graphicItem; }
+
+private:
+    yarp::graph::Vertex* owner;
+    void* graphicItem;
+};
+
+
+class PortVertex : public YarpvizVertex {
+public:
+        PortVertex(const std::string name) : YarpvizVertex("(type port)") , owner(NULL) {
             property.put("name", name);
         }
-        void setOwner(yarp::graph::Vertex* owner) {
-            PortVertex::owner = owner;
-        }
 
-        yarp::graph::Vertex* getOwner() {
-            return owner;
-        }
+        void setOwner(yarp::graph::Vertex* owner) { PortVertex::owner = owner; }
+        yarp::graph::Vertex* getOwner() { return owner; }
 
         virtual bool operator == (const yarp::graph::Vertex &v1) const {
             return property.find("name").asString() == v1.property.find("name").asString();
@@ -34,12 +45,13 @@ private:
 };
 
 
-class ProcessVertex : public yarp::graph::Vertex {
+class ProcessVertex : public YarpvizVertex{
 public:
-        ProcessVertex(int pid, const std::string hostname) : yarp::graph::Vertex("(type process)") {
+        ProcessVertex(int pid, const std::string hostname) : YarpvizVertex("(type process)") {
             property.put("hostname", hostname);
             property.put("pid", pid);
         }
+
         virtual bool operator == (const yarp::graph::Vertex &v1) const {
             return property.find("hostname").asString() == v1.property.find("hostname").asString() &&
                    property.find("pid").asInt() == v1.property.find("pid").asInt();
