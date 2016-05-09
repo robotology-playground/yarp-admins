@@ -1,5 +1,4 @@
 
-
 # all files which may be mocced
 set(qgvlib_qt_HDRS
   private/QGVCore.cpp
@@ -12,15 +11,6 @@ set(qgvlib_qt_HDRS
   QGVScene.cpp
   QGVSubGraph.cpp
 )
-
-
-#set(qgvlib_qt_HDRS ngraph.h)
-#set(qgvlib_qt_QRC_FILES res.qrc)
-#set(qgvlib_qt_UI_FILES moduleviewwidget.ui)
-
-
-# include with QT_USE selected library parts
-#INCLUDE(${QT_USE_FILE})
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -36,13 +26,8 @@ include_directories(
 # if QGVCORE_LIB is not set or equal 0 (null), import macro is used
 ADD_DEFINITIONS(-DQGVCORE_LIB -DWITH_CGRAPH)
 
-#qt5_add_resources(yarpviz_qt_QRC_GEN_SRCS ${yarpviz_qt_QRC_FILES})
-#qt5_wrap_ui(yarpviz_qt_UI_GEN_SRCS ${yarpviz_qt_UI_FILES})
-
 source_group("Source Files" FILES ${qgvlib_qt_SRCS})
 source_group("Header Files" FILES ${qgvlib_qt_HDRS})
-#source_group("Resources Files" FILES ${yarpviz_qt_QRC_FILES})
-#source_group("UI Files" FILES ${yarpviz_qt_UI_FILES})
 source_group("Generated Files" FILES ${yarpviz_qt_QRC_GEN_SRCS}
                                      ${yarpviz_qt_UI_GEN_SRCS})
 
@@ -55,7 +40,4 @@ target_link_libraries(qgvcore
                  	  ${GRAPHVIZ_GVC_LIBRARY}
                       ${GRAPHVIZ_CGRAPH_LIBRARY}
                       ${GRAPHVIZ_CDT_LIBRARY})
-
-#qtyarp_use_modules(qgvcore Core Widgets)
-#qt5_use_modules(qgvcore Core Widgets)
 

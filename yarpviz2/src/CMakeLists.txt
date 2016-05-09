@@ -4,15 +4,10 @@
 # It assumes you want to build an executable from source code in 
 # the current directory.
 
-cmake_minimum_required(VERSION 2.8)
-set(PROJECTNAME yarpviz)
-project(${PROJECTNAME})
-
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-include_directories(./ 
-                    ../QGVCore
+include_directories(../QGVCore
                     ${YARP_INCLUDE_DIRS})
 
 set(yarpviz_qt_SRCS ggraph.cpp main.cpp MainWindow.cpp QGraphicsViewEc.cpp NetworkProfiler.cpp)
@@ -35,7 +30,7 @@ source_group("Generated Files" FILES ${yarpviz_qt_QRC_GEN_SRCS}
                                   ${yarpviz_qt_UI_GEN_SRCS})
 
 
-add_executable(yarpviz-qt WIN32 ${yarpviz_qt_SRCS}
+add_executable(${PROJECTNAME} WIN32 ${yarpviz_qt_SRCS}
                                       ${yarpviz_qt_HDRS}
                                       ${yarpviz_qt_QRC_FILES}
                                       ${yarpviz_qt_QRC_GEN_SRCS}
@@ -43,18 +38,18 @@ add_executable(yarpviz-qt WIN32 ${yarpviz_qt_SRCS}
                                       ${yarpviz_qt_UI_FILES})
 
 
-target_link_libraries(yarpviz-qt ${YARP_LIBRARIES} YARP::YARP_manager qgvcore)
-qtyarp_use_modules(yarpviz-qt Widgets Gui)
+target_link_libraries(${PROJECTNAME} ${YARP_LIBRARIES} qgvcore)
+qtyarp_use_modules(${PROJECTNAME} Widgets Gui)
 
 qtyarp_deprecate_with_cmake_version(2.8.11)
 if(WIN32 AND CMAKE_VERSION VERSION_LESS 2.8.11)
-    target_link_libraries(yarpviz-qt YARP::YARP_manager qgvcore Qt5::WinMain)
+    target_link_libraries(${PROJECTNAME} qgvcore Qt5::WinMain)
 endif()
 
-install(TARGETS yarpviz-qt COMPONENT utilities DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS ${PROJECTNAME} COMPONENT utilities DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-#yarp_osx_duplicate_and_add_bundle(TARGET_ORIG yarpviz-qt
-#                                TARGET_DEST yarpviz-qt.app
+#yarp_osx_duplicate_and_add_bundle(TARGET_ORIG ${PROJECTNAME}
+#                                TARGET_DEST ${PROJECTNAME}.app
 #                                APP_ICON Resources/AppIcon.icns
 #                                INSTALL_COMPONENT utilities
 #                                INSTALL_DESTINATION "${CMAKE_INSTALL_BINDIR}")

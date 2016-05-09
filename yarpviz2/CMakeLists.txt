@@ -4,23 +4,33 @@
 # It assumes you want to build an executable from source code in 
 # the current directory.
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.9)
 set(PROJECTNAME yarpviz)
 project(${PROJECTNAME})
 
 
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
+# Find YARP.  Point the YARP_DIR environment variable at your build.
+find_package(YARP REQUIRED)
 
 # Find YARP.  Point the YARP_DIR environment variable at your build.
 find_package(YARP REQUIRED)
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
+list(APPEND CMAKE_MODULE_PATH ${YARP_MODULE_PATH})
+
+# include some helper functions
+include(GNUInstallDirs)
+include(YarpInstallationHelpers)
+include(YarpUseQt5)
 
 find_package(Graphviz)
 find_package(Qt5Widgets)
 find_package(Qt5Declarative)
 
-
-list(APPEND CMAKE_MODULE_PATH ${YARP_MODULE_PATH})
-include(YarpUseQt5)
+#########################################################################
+# Control where libraries and executables are placed during the build
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 
 add_subdirectory(QGVCore)
 add_subdirectory(src)
