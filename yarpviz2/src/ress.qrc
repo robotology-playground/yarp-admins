@@ -1,8 +1,0 @@
-<RCC>
-    <qresource prefix="/icons">
-        <file>resources/profiling.png</file>
-        <file>resources/module.svg</file>
-        <file>resources/port.svg</file>
-        <file>resources/Gnome-System-Run-64.png</file>
-    </qresource>
-</RCC>
